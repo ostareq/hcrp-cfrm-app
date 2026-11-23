@@ -2,21 +2,60 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#2b3a67">
   <title>HCRP CFRM Field App</title>
   <link rel="manifest" href="./manifest.json">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    :root { --primary: #2b3a67; --bg: #f4f6fa; }
-    body { background: var(--bg); font-family: 'Segoe UI', Roboto, sans-serif; font-size: 0.94rem; padding-bottom: 70px; }
+    :root { --primary: #2b3a67; --accent: #4c5c92; --bg: #f4f6fa; }
+    body { background: var(--bg); font-family: 'Segoe UI', Roboto, sans-serif; font-size: 0.95rem; padding-bottom: 70px; overflow-x: hidden; }
     .navbar { background: var(--primary); }
     .status-pill { font-size: 0.78rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
     .online-pill { background: #198754; color: #fff; }
     .offline-pill { background: #dc3545; color: #fff; }
     .kobo-tile { border-radius: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.07); transition: transform 0.1s; cursor: pointer; }
     .kobo-tile:active { transform: scale(0.98); }
+
+    /* KoboCollect Swipe Question Card */
+    .kobo-slide-stage {
+      min-height: 360px;
+      touch-action: pan-y;
+      user-select: none;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+    .kobo-q-badge {
+      display: inline-block; background: #e0e7ff; color: #1e3a8a;
+      font-weight: 700; font-size: 0.78rem; padding: 3px 10px; border-radius: 14px;
+    }
+    .kobo-q-title { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 10px 0 6px; }
+    .kobo-q-hint { font-size: 0.84rem; color: #64748b; margin-bottom: 14px; }
+
+    /* Tap-to-Select Option Cards (Kobo Radio Style) */
+    .kobo-opt-list { max-height: 310px; overflow-y: auto; padding-right: 2px; }
+    .kobo-opt-item {
+      display: flex; align-items: center; gap: 12px;
+      background: #ffffff; border: 2px solid #e2e8f0; border-radius: 10px;
+      padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .kobo-opt-item:active { transform: scale(0.99); }
+    .kobo-opt-item.selected {
+      border-color: var(--primary); background: #eef3fb; color: var(--primary); font-weight: 600;
+    }
+    .kobo-radio-circle {
+      width: 20px; height: 20px; border-radius: 50%; border: 2px solid #94a3b8;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .kobo-opt-item.selected .kobo-radio-circle { border-color: var(--primary); }
+    .kobo-opt-item.selected .kobo-radio-circle::after {
+      content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--primary);
+    }
+
+    .kobo-input-lg { font-size: 1.05rem; padding: 12px 14px; border-radius: 10px; border: 2px solid #cbd5e1; }
+    .kobo-input-lg:focus { border-color: var(--primary); box-shadow: none; }
+
     .portal-footer { text-align: center; font-size: 0.82rem; color: #475569; padding: 16px; margin-top: 24px; border-top: 1px solid #e2e8f0; }
   </style>
 </head>
@@ -27,12 +66,12 @@
     <span class="navbar-brand fw-bold fs-6"><i class="bi bi-shield-check me-1"></i>HCRP CFRM App</span>
     <div class="d-flex align-items-center gap-2">
       <span id="netStatusBadge" class="status-pill offline-pill"><i class="bi bi-wifi-off me-1"></i>Offline</span>
-      <button class="btn btn-sm btn-outline-light" onclick="syncMetadataFromServer()" title="Sync Dropdowns & Staff"><i class="bi bi-arrow-repeat"></i></button>
+      <button class="btn btn-sm btn-outline-light" onclick="syncMetadataFromServer(false)" title="Sync Dropdowns & Staff"><i class="bi bi-arrow-repeat"></i></button>
     </div>
   </div>
 </nav>
 
-<div class="container py-3" style="max-width: 760px;">
+<div class="container py-3" style="max-width: 720px;">
 
   <!-- TOP MODE SWITCHER -->
   <ul class="nav nav-pills nav-fill bg-white p-1 rounded shadow-sm mb-3">
@@ -59,8 +98,8 @@
         <div class="col-6">
           <div class="card kobo-tile p-3 bg-primary text-white h-100" onclick="openBlankForm()">
             <i class="bi bi-file-earmark-plus fs-2 mb-1"></i>
-            <div class="fw-bold">Fill Blank Report</div>
-            <small class="opacity-75">Works 100% offline</small>
+            <div class="fw-bold">Fill Blank Form</div>
+            <small class="opacity-75">Swipe, select & write</small>
           </div>
         </div>
         <div class="col-6">
@@ -69,8 +108,8 @@
               <i class="bi bi-pencil-square fs-2 text-warning"></i>
               <span class="badge bg-warning text-dark align-self-start fs-6" id="cntDrafts">0</span>
             </div>
-            <div class="fw-bold mt-1">Edit Saved Drafts</div>
-            <small class="text-muted">Incomplete forms</small>
+            <div class="fw-bold mt-1">Edit Saved Form</div>
+            <small class="text-muted">Drafts & un-sent</small>
           </div>
         </div>
         <div class="col-6">
@@ -79,8 +118,8 @@
               <i class="bi bi-send-check fs-2 text-success"></i>
               <span class="badge bg-success align-self-start fs-6" id="cntFinalized">0</span>
             </div>
-            <div class="fw-bold mt-1">Send Finalized</div>
-            <small class="text-muted">Ready to sync</small>
+            <div class="fw-bold mt-1">Send Finalized Form</div>
+            <small class="text-muted">Ready to upload</small>
           </div>
         </div>
         <div class="col-6">
@@ -89,7 +128,7 @@
               <i class="bi bi-check-circle-fill fs-2 text-secondary"></i>
               <span class="badge bg-secondary align-self-start fs-6" id="cntSent">0</span>
             </div>
-            <div class="fw-bold mt-1">View Sent Reports</div>
+            <div class="fw-bold mt-1">View Sent Form</div>
             <small class="text-muted">Synced with 6-digit ID</small>
           </div>
         </div>
@@ -100,7 +139,7 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div class="form-check form-switch mb-0">
             <input class="form-check-input" type="checkbox" id="chkAutoSync" checked onchange="saveSyncPref()">
-            <label class="form-check-label fw-semibold" for="chkAutoSync">Auto-Send Finalized Reports when Online</label>
+            <label class="form-check-label fw-semibold" for="chkAutoSync">Auto-Send Finalized when Online</label>
           </div>
           <button class="btn btn-success btn-sm" id="btnSendAllNow" onclick="syncFinalizedQueue(false)">
             <i class="bi bi-cloud-upload me-1"></i>Send Finalized Now
@@ -110,51 +149,39 @@
       </div>
     </div>
 
-    <!-- Kobo Form Editor (Create / Edit Draft or Finalized) -->
+    <!-- KOBOCOLLECT SWIPE QUESTIONNAIRE WIZARD -->
     <div id="koboFormEditor" class="card p-3 d-none">
-      <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-        <h6 class="fw-bold text-primary mb-0" id="formEditorTitle">New CFRM Report</h6>
-        <button class="btn btn-sm btn-outline-secondary" onclick="backToKoboHome()"><i class="bi bi-arrow-left"></i> Back</button>
+      <!-- Top Wizard Bar -->
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <button class="btn btn-sm btn-outline-secondary" onclick="confirmExitWizard()"><i class="bi bi-x-lg"></i> Exit</button>
+        <span class="fw-bold text-primary small" id="wizardStepIndicator">Question 1 of 18</span>
+        <button class="btn btn-sm btn-outline-primary" onclick="openJumpModal()"><i class="bi bi-list-ul me-1"></i>Jump</button>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress mb-3" style="height: 6px;">
+        <div class="progress-bar bg-primary" id="wizardProgressBar" style="width: 5%;"></div>
       </div>
 
       <input type="hidden" id="editLocalId">
-      <div class="row g-2">
-        <div class="col-md-4"><label class="form-label small fw-bold">Reporting by (Name) *</label><input type="text" id="f_repName" class="form-control"></div>
-        <div class="col-md-4"><label class="form-label small fw-bold">Reporting by (Role) *</label><input type="text" id="f_repRole" class="form-control"></div>
-        <div class="col-md-4"><label class="form-label small fw-bold">Channel Used *</label><select id="f_channel" class="form-select"></select></div>
 
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Date Reported *</label><input type="date" id="f_dateRep" class="form-control"></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Date of Incident *</label><input type="date" id="f_dateInc" class="form-control"></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Project Name *</label><select id="f_project" class="form-select"></select></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Sector *</label><select id="f_sector" class="form-select"></select></div>
+      <!-- Swipeable Question Stage -->
+      <div id="koboSwipeStage" class="kobo-slide-stage"></div>
 
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">District *</label><select id="f_district" class="form-select"></select></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Upazila *</label><select id="f_upazila" class="form-select"></select></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Camp *</label><select id="f_camp" class="form-select"></select></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Block / Sub-Block *</label><input type="text" id="f_block" class="form-control"></div>
-
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Complainant Name *</label><input type="text" id="f_complainant" class="form-control"></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">FCN Number</label><input type="text" id="f_fcn" class="form-control"></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Gender *</label><select id="f_gender" class="form-select"></select></div>
-        <div class="col-6 col-md-3"><label class="form-label small fw-bold">Age Group *</label><select id="f_age" class="form-select"></select></div>
-
-        <div class="col-md-5"><label class="form-label small fw-bold">Implicated Parties *</label><select id="f_implicated" class="form-select"></select></div>
-        <div class="col-md-7">
-          <label class="form-label small fw-bold">Assigned Verifier *</label>
-          <input type="text" id="f_focalSearch" class="form-control form-control-sm mb-1" placeholder="Search verifier name..." oninput="filterFocalDropdown()">
-          <select id="f_focal" class="form-select"></select>
-        </div>
-
-        <div class="col-12"><label class="form-label small fw-bold">Complaint / Incident Details *</label><textarea id="f_details" class="form-control" rows="3"></textarea></div>
+      <!-- Bottom Kobo Navigation Buttons -->
+      <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-3 gap-2">
+        <button type="button" class="btn btn-outline-secondary flex-fill py-2 fw-semibold" id="btnKoboPrev" onclick="prevQuestion()">
+          <i class="bi bi-chevron-left me-1"></i>Previous
+        </button>
+        <button type="button" class="btn btn-outline-warning py-2 px-3" onclick="quickSaveDraft()" title="Save Draft Anytime">
+          <i class="bi bi-save"></i>
+        </button>
+        <button type="button" class="btn btn-primary flex-fill py-2 fw-semibold" id="btnKoboNext" onclick="nextQuestion()">
+          Next<i class="bi bi-chevron-right ms-1"></i>
+        </button>
       </div>
-
-      <div class="d-flex gap-2 mt-3">
-        <button type="button" class="btn btn-warning flex-fill fw-bold" onclick="saveOfflineRecord('DRAFT')">
-          <i class="bi bi-save me-1"></i>Save as Draft
-        </button>
-        <button type="button" class="btn btn-success flex-fill fw-bold" onclick="saveOfflineRecord('FINALIZED')">
-          <i class="bi bi-check2-circle me-1"></i>Finalize Report
-        </button>
+      <div class="text-center text-muted small mt-2">
+        <i class="bi bi-hand-index-thumb me-1"></i>Swipe left or right to move between questions
       </div>
     </div>
 
@@ -173,7 +200,7 @@
   </div>
 
   <!-- =====================================================================
-       MODE 2: ONLINE PORTAL & ROLE WORKSPACES (EMBEDDED WHEN ONLINE)
+       MODE 2: ONLINE PORTAL & ROLE WORKSPACES
        ===================================================================== -->
   <div id="viewOnlinePortal" class="d-none">
     <div id="offlineWarningCard" class="alert alert-warning d-none">
@@ -186,6 +213,19 @@
 
 </div>
 
+<!-- JUMP TO QUESTION MODAL -->
+<div class="modal fade" id="jumpModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white py-2">
+        <h6 class="modal-title">Go To Prompt (Form Outline)</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-2" id="jumpListContainer"></div>
+    </div>
+  </div>
+</div>
+
 <footer class="portal-footer">
   <div class="fw-semibold text-dark">&copy; HCRP- MEAL Unit | Islamic Relief Bangladesh</div>
   <div>For technical issues or support, please contact: <strong>Omar Sadek Tareq</strong> (<a href="mailto:omar.tareq@islamicrelief-bd.org">omar.tareq@islamicrelief-bd.org</a>)</div>
@@ -194,7 +234,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   // PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT /exec URL HERE:
-  const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzeHmfK5IfbhETSHQ7DqaFZm8DeAK0QwasJ6FOPW0J1kjgwadhfIU8u63Gj6jAxhvFd/exec';
+  const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
 
   const STORAGE_KEYS = {
     META: 'HCRP_CFRM_OFFLINE_META_V1',
@@ -203,6 +243,32 @@
   };
 
   let LOCAL_META = { dropdowns: {}, focals: [], lastSync: '' };
+  let CURRENT_ANSWERS = {};
+  let CURRENT_STEP = 0;
+  let FOCAL_SEARCH_TERM = '';
+
+  // KoboCollect Sequential Questions Definition
+  const KOBO_QUESTIONS = [
+    { key: 'reportingByName', label: '1. Reporting by (Name)', type: 'text', required: true, hint: 'Enter full name of the staff/volunteer logging this report.' },
+    { key: 'reportingByRole', label: '2. Reporting by (Role)', type: 'text', required: true, hint: 'e.g., Community Mobilizer, MEAL Officer, Volunteer' },
+    { key: 'channelUsed', label: '3. Channel Used', type: 'select', dropdownKey: 'Channel Used', required: true, hint: 'Tap an option to select.' },
+    { key: 'dateReported', label: '4. Date Reported', type: 'date', required: true, hint: 'Select the date this feedback/incident was reported.' },
+    { key: 'dateOfIncident', label: '5. Date of Incident', type: 'date', required: true, hint: 'Select the date when the incident occurred.' },
+    { key: 'projectName', label: '6. Project Name', type: 'select', dropdownKey: 'Project Name', required: true, hint: 'Tap the relevant project.' },
+    { key: 'sector', label: '7. Sector / Intervention', type: 'select', dropdownKey: 'Sector / Intervention', required: true, hint: 'Tap the relevant intervention sector.' },
+    { key: 'district', label: '8. District', type: 'select', dropdownKey: 'District', required: true, hint: 'Select District.' },
+    { key: 'upazila', label: '9. Upazila', type: 'select', dropdownKey: 'Upazila', required: true, hint: 'Select Upazila.' },
+    { key: 'camp', label: '10. Camp', type: 'select', dropdownKey: 'Camp', required: true, hint: 'Tap the Camp where the incident occurred.' },
+    { key: 'block', label: '11. Block / Sub-Block / Cluster', type: 'text', required: true, hint: 'Write Block, Sub-Block, or Cluster identifier.' },
+    { key: 'reporterName', label: '12. Reporter / Complainant Name', type: 'text', required: true, hint: 'Write name of the complainant or feedback provider.' },
+    { key: 'fcnNumber', label: '13. FCN Number (Optional)', type: 'text', required: false, hint: 'Enter Family Counting Number if applicable, or swipe Next.' },
+    { key: 'gender', label: '14. Gender', type: 'select', dropdownKey: 'Gender', required: true, hint: 'Tap to select Gender.' },
+    { key: 'ageGroup', label: '15. Age Group', type: 'select', dropdownKey: 'Age Group', required: true, hint: 'Tap to select Age Group.' },
+    { key: 'implicatedParties', label: '16. Implicated Parties', type: 'select', dropdownKey: 'Implicated Parties', required: true, hint: 'Tap to select Implicated Parties.' },
+    { key: 'assignedFocal', label: '17. Assigned Person / Focal (Verifier)', type: 'focal_select', required: true, hint: 'Search and tap the Verifier who will verify this report.' },
+    { key: 'details', label: '18. Feedback / Complaint / Incident Details', type: 'textarea', required: true, hint: 'Describe the incident or feedback clearly.' },
+    { key: '__FINAL_SCREEN__', label: 'End of Form — Save or Finalize', type: 'summary', required: false, hint: 'Review completion status and choose Save Draft or Finalize.' }
+  ];
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -215,27 +281,45 @@
     loadCachedMeta();
     updateNetworkBadge();
     updateQueueCounts();
+    bindSwipeGestures();
 
     window.addEventListener('online', () => {
       updateNetworkBadge();
-      if (document.getElementById('chkAutoSync').checked) {
-        syncFinalizedQueue(true);
-      }
+      if (document.getElementById('chkAutoSync').checked) syncFinalizedQueue(true);
     });
     window.addEventListener('offline', updateNetworkBadge);
 
     if (navigator.onLine) {
       syncMetadataFromServer(true);
-      if (document.getElementById('chkAutoSync').checked) {
-        syncFinalizedQueue(true);
-      }
+      if (document.getElementById('chkAutoSync').checked) syncFinalizedQueue(true);
     }
   };
 
+  /* ================= TOUCH SWIPE GESTURES (LEFT / RIGHT) ================= */
+  function bindSwipeGestures() {
+    const stage = document.getElementById('koboSwipeStage');
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    stage.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    stage.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].screenX - touchStartX;
+      const dy = e.changedTouches[0].screenY - touchStartY;
+      // Trigger horizontal swipe only if horizontal movement > 65px and greater than vertical scroll
+      if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        if (dx < 0) nextQuestion();      // Swipe Left -> Next Question
+        else prevQuestion();             // Swipe Right -> Previous Question
+      }
+    }, { passive: true });
+  }
+
   function updateNetworkBadge() {
     const badge = document.getElementById('netStatusBadge');
-    const isOnline = navigator.onLine;
-    if (isOnline) {
+    if (navigator.onLine) {
       badge.className = 'status-pill online-pill';
       badge.innerHTML = '<i class="bi bi-wifi me-1"></i>Online';
     } else {
@@ -275,7 +359,6 @@
       const raw = localStorage.getItem(STORAGE_KEYS.META);
       if (raw) LOCAL_META = JSON.parse(raw);
     } catch (e) {}
-    populateAllDropdowns();
     if (LOCAL_META.lastSync) {
       document.getElementById('lastMetaSyncNote').innerText = `Lists synced: ${LOCAL_META.lastSync}`;
     }
@@ -299,9 +382,8 @@
             lastSync: new Date().toLocaleString()
           };
           localStorage.setItem(STORAGE_KEYS.META, JSON.stringify(LOCAL_META));
-          populateAllDropdowns();
           document.getElementById('lastMetaSyncNote').innerText = `Lists synced: ${LOCAL_META.lastSync}`;
-          if (!silent) alert('Dropdowns and Verifier list updated for offline use.');
+          if (!silent) alert('Dropdowns and Staff Verifier list synced for offline use.');
         }
       })
       .catch(() => {
@@ -309,59 +391,249 @@
       });
   }
 
-  function populateSelect(id, arr, placeholder) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = placeholder ? `<option value="">${placeholder}</option>` : '';
-    (arr || []).forEach(v => {
-      const opt = document.createElement('option');
-      opt.value = v;
-      opt.textContent = v;
-      el.appendChild(opt);
-    });
+  /* ================= KOBOCOLLECT WIZARD RENDERING ================= */
+  function openBlankForm() {
+    document.getElementById('editLocalId').value = '';
+    const todayStr = new Date().toISOString().slice(0, 10);
+    CURRENT_ANSWERS = {
+      reportingByName: '', reportingByRole: '', channelUsed: '',
+      dateReported: todayStr, dateOfIncident: '',
+      projectName: '', sector: '', district: '', upazila: '', camp: '',
+      block: '', reporterName: '', fcnNumber: '', gender: '', ageGroup: '',
+      implicatedParties: '', assignedFocal: '', details: ''
+    };
+    FOCAL_SEARCH_TERM = '';
+    CURRENT_STEP = 0;
+    showWizardView();
   }
 
-  function populateAllDropdowns() {
-    const d = LOCAL_META.dropdowns || {};
-    populateSelect('f_channel', d['Channel Used'], 'Select Channel');
-    populateSelect('f_project', d['Project Name'], 'Select Project');
-    populateSelect('f_sector', d['Sector / Intervention'], 'Select Sector');
-    populateSelect('f_district', d['District'], 'Select District');
-    populateSelect('f_upazila', d['Upazila'], 'Select Upazila');
-    populateSelect('f_camp', d['Camp'], 'Select Camp');
-    populateSelect('f_gender', d['Gender'], 'Select Gender');
-    populateSelect('f_age', d['Age Group'], 'Select Age Group');
-    populateSelect('f_implicated', d['Implicated Parties'], 'Select Implicated Parties');
-    filterFocalDropdown();
+  function editLocalRecord(localId) {
+    const rec = getLocalRecords().find(r => r.localId === localId);
+    if (!rec) return;
+    document.getElementById('editLocalId').value = rec.localId;
+    CURRENT_ANSWERS = Object.assign({}, rec.payload);
+    FOCAL_SEARCH_TERM = '';
+    CURRENT_STEP = 0;
+    showWizardView();
   }
 
-  function filterFocalDropdown() {
-    const q = (document.getElementById('f_focalSearch').value || '').trim().toLowerCase();
-    let list = [...(LOCAL_META.focals || [])];
-    if (q) {
-      list = list.filter(f =>
-        (f.name || '').toLowerCase().includes(q) ||
-        (f.designation || '').toLowerCase().includes(q) ||
-        (f.camp || '').toLowerCase().includes(q)
-      );
+  function showWizardView() {
+    document.getElementById('koboHomeMenu').classList.add('d-none');
+    document.getElementById('koboQueueViewer').classList.add('d-none');
+    document.getElementById('koboFormEditor').classList.remove('d-none');
+    renderCurrentQuestion();
+  }
+
+  function captureCurrentInputValue() {
+    const q = KOBO_QUESTIONS[CURRENT_STEP];
+    if (!q) return;
+    if (q.type === 'text' || q.type === 'date' || q.type === 'textarea') {
+      const el = document.getElementById('koboActiveInput');
+      if (el) CURRENT_ANSWERS[q.key] = el.value;
     }
-    const sel = document.getElementById('f_focal');
-    const prev = sel.value;
-    sel.innerHTML = `<option value="">-- Select Assigned Verifier (${list.length}) --</option>`;
-    list.forEach(f => {
-      const opt = document.createElement('option');
-      opt.value = f.name;
-      opt.textContent = `${f.name}${f.designation ? ' (' + f.designation + ')' : ''}`;
-      sel.appendChild(opt);
-    });
-    if (prev && list.some(f => f.name === prev)) sel.value = prev;
   }
 
-  /* ================= KOBOCOLLECT QUEUE MANAGEMENT ================= */
+  function renderCurrentQuestion() {
+    const total = KOBO_QUESTIONS.length;
+    const q = KOBO_QUESTIONS[CURRENT_STEP];
+    const pct = Math.round(((CURRENT_STEP + 1) / total) * 100);
+
+    document.getElementById('wizardStepIndicator').innerText = `Prompt ${CURRENT_STEP + 1} of ${total}`;
+    document.getElementById('wizardProgressBar').style.width = `${pct}%`;
+    document.getElementById('btnKoboPrev').disabled = (CURRENT_STEP === 0);
+
+    const nextBtn = document.getElementById('btnKoboNext');
+    if (CURRENT_STEP === total - 1) {
+      nextBtn.classList.add('d-none');
+    } else {
+      nextBtn.classList.remove('d-none');
+    }
+
+    const stage = document.getElementById('koboSwipeStage');
+    const val = CURRENT_ANSWERS[q.key] || '';
+    const reqBadge = q.required ? '<span class="text-danger ms-1">* Required</span>' : '<span class="text-muted ms-1">(Optional)</span>';
+
+    let bodyHtml = `
+      <div>
+        <span class="kobo-q-badge">Step ${CURRENT_STEP + 1} / ${total}</span>
+        ${q.type !== 'summary' ? reqBadge : ''}
+      </div>
+      <div class="kobo-q-title">${q.label}</div>
+      <div class="kobo-q-hint">${q.hint}</div>
+    `;
+
+    if (q.type === 'text') {
+      bodyHtml += `<input type="text" id="koboActiveInput" class="form-control kobo-input-lg" placeholder="Tap here to write..." value="${escapeHtml(val)}">`;
+    }
+    else if (q.type === 'date') {
+      bodyHtml += `<input type="date" id="koboActiveInput" class="form-control kobo-input-lg" value="${escapeHtml(val)}">`;
+    }
+    else if (q.type === 'textarea') {
+      bodyHtml += `<textarea id="koboActiveInput" class="form-control kobo-input-lg" rows="5" placeholder="Write detailed description here...">${escapeHtml(val)}</textarea>`;
+    }
+    else if (q.type === 'select') {
+      const options = (LOCAL_META.dropdowns && LOCAL_META.dropdowns[q.dropdownKey]) || [];
+      if (options.length === 0) {
+        bodyHtml += `<div class="alert alert-warning small">No cached options for <b>${q.dropdownKey}</b>. Connect online and tap the sync icon (<i class="bi bi-arrow-repeat"></i>) at top right, or type manually below:</div>
+          <input type="text" id="koboActiveInput" class="form-control kobo-input-lg" value="${escapeHtml(val)}" placeholder="Enter value...">`;
+      } else {
+        bodyHtml += `<div class="kobo-opt-list">` + options.map(opt => {
+          const isSel = (val === opt);
+          const safeOpt = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          return `<div class="kobo-opt-item ${isSel ? 'selected' : ''}" onclick="selectKoboOption('${q.key}', '${safeOpt}')">
+            <div class="kobo-radio-circle"></div>
+            <div>${escapeHtml(opt)}</div>
+          </div>`;
+        }).join('') + `</div>`;
+      }
+    }
+    else if (q.type === 'focal_select') {
+      const allFocals = LOCAL_META.focals || [];
+      const filtered = FOCAL_SEARCH_TERM
+        ? allFocals.filter(f =>
+            (f.name || '').toLowerCase().includes(FOCAL_SEARCH_TERM) ||
+            (f.designation || '').toLowerCase().includes(FOCAL_SEARCH_TERM) ||
+            (f.camp || '').toLowerCase().includes(FOCAL_SEARCH_TERM)
+          )
+        : allFocals;
+
+      bodyHtml += `
+        <div class="input-group mb-2">
+          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+          <input type="text" id="koboFocalSearchInput" class="form-control" placeholder="Search verifier by name, role or camp..." value="${escapeHtml(FOCAL_SEARCH_TERM)}" oninput="onKoboFocalSearch(this.value)">
+        </div>
+        <div class="kobo-opt-list">` +
+        filtered.map(f => {
+          const isSel = (val === f.name);
+          const safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          const sub = [f.designation, f.project, f.camp].filter(Boolean).join(' • ');
+          return `<div class="kobo-opt-item ${isSel ? 'selected' : ''}" onclick="selectKoboOption('assignedFocal', '${safeName}')">
+            <div class="kobo-radio-circle"></div>
+            <div>
+              <div>${escapeHtml(f.name)}</div>
+              ${sub ? `<div class="small text-muted fw-normal">${escapeHtml(sub)}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('') + `</div>`;
+    }
+    else if (q.type === 'summary') {
+      const missing = getMissingRequiredQuestions();
+      bodyHtml += `
+        <div class="p-3 rounded border bg-light mb-3">
+          <div class="fw-bold mb-1">Form Completion Check:</div>
+          ${missing.length === 0
+            ? `<div class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>All 17 mandatory questions are answered! Ready to Finalize.</div>`
+            : `<div class="text-danger small fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>${missing.length} mandatory question(s) still blank:</div>
+               <div class="small text-muted">${missing.map(m => m.label).join('<br>')}</div>`
+          }
+        </div>
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-success btn-lg fw-bold" onclick="saveOfflineRecord('FINALIZED')">
+            <i class="bi bi-check2-circle me-2"></i>Finalize & Queue for Sending
+          </button>
+          <button type="button" class="btn btn-warning fw-bold" onclick="saveOfflineRecord('DRAFT')">
+            <i class="bi bi-save me-2"></i>Save as Draft (Edit Later)
+          </button>
+        </div>
+      `;
+    }
+
+    stage.innerHTML = bodyHtml;
+  }
+
+  function selectKoboOption(key, value) {
+    CURRENT_ANSWERS[key] = value;
+    renderCurrentQuestion();
+    // Auto-advance smoothly after a short tap confirmation (KoboCollect feel)
+    setTimeout(() => {
+      if (CURRENT_STEP < KOBO_QUESTIONS.length - 1) {
+        CURRENT_STEP++;
+        renderCurrentQuestion();
+      }
+    }, 220);
+  }
+
+  function onKoboFocalSearch(term) {
+    FOCAL_SEARCH_TERM = String(term || '').trim().toLowerCase();
+    renderCurrentQuestion();
+    const inp = document.getElementById('koboFocalSearchInput');
+    if (inp) {
+      inp.focus();
+      inp.setSelectionRange(inp.value.length, inp.value.length);
+    }
+  }
+
+  function nextQuestion() {
+    captureCurrentInputValue();
+    const q = KOBO_QUESTIONS[CURRENT_STEP];
+    if (q && q.required && !String(CURRENT_ANSWERS[q.key] || '').trim()) {
+      alert(`"${q.label}" is mandatory. Please answer before moving forward (or tap Save icon to save a Draft).`);
+      return;
+    }
+    if (CURRENT_STEP < KOBO_QUESTIONS.length - 1) {
+      CURRENT_STEP++;
+      renderCurrentQuestion();
+    }
+  }
+
+  function prevQuestion() {
+    captureCurrentInputValue();
+    if (CURRENT_STEP > 0) {
+      CURRENT_STEP--;
+      renderCurrentQuestion();
+    }
+  }
+
+  function openJumpModal() {
+    captureCurrentInputValue();
+    const box = document.getElementById('jumpListContainer');
+    box.innerHTML = KOBO_QUESTIONS.map((q, idx) => {
+      if (q.type === 'summary') return '';
+      const ans = String(CURRENT_ANSWERS[q.key] || '').trim();
+      const statusIcon = ans
+        ? '<i class="bi bi-check-circle-fill text-success"></i>'
+        : (q.required ? '<i class="bi bi-exclamation-circle text-danger"></i>' : '<i class="bi bi-circle text-muted"></i>');
+      return `<div class="d-flex justify-content-between align-items-center p-2 border-bottom" style="cursor:pointer;" onclick="jumpToStep(${idx})">
+        <div>
+          <div class="fw-semibold small">${q.label}</div>
+          <div class="small text-muted text-truncate" style="max-width:260px;">${ans || '<i>Not answered</i>'}</div>
+        </div>
+        <div>${statusIcon}</div>
+      </div>`;
+    }).join('');
+    new bootstrap.Modal(document.getElementById('jumpModal')).show();
+  }
+
+  function jumpToStep(idx) {
+    bootstrap.Modal.getInstance(document.getElementById('jumpModal')).hide();
+    CURRENT_STEP = idx;
+    renderCurrentQuestion();
+  }
+
+  function confirmExitWizard() {
+    captureCurrentInputValue();
+    if (confirm('Exit form? Unsaved changes on this screen will be lost unless saved as Draft.')) {
+      backToKoboHome();
+    }
+  }
+
+  function quickSaveDraft() {
+    captureCurrentInputValue();
+    saveOfflineRecord('DRAFT');
+  }
+
+  function getMissingRequiredQuestions() {
+    return KOBO_QUESTIONS.filter(q => q.required && !String(CURRENT_ANSWERS[q.key] || '').trim());
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ================= KOBOCOLLECT LOCAL STORAGE & SYNC ================= */
   function getLocalRecords() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.RECORDS) || '[]');
-    } catch (e) { return []; }
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.RECORDS) || '[]'); }
+    catch (e) { return []; }
   }
 
   function setLocalRecords(arr) {
@@ -383,101 +655,13 @@
     updateQueueCounts();
   }
 
-  function openBlankForm() {
-    document.getElementById('editLocalId').value = '';
-    document.getElementById('formEditorTitle').innerText = 'Fill Blank CFRM Report';
-    ['f_repName', 'f_repRole', 'f_channel', 'f_dateInc', 'f_project', 'f_sector',
-     'f_district', 'f_upazila', 'f_camp', 'f_block', 'f_complainant', 'f_fcn',
-     'f_gender', 'f_age', 'f_implicated', 'f_focalSearch', 'f_details'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
-    document.getElementById('f_dateRep').valueAsDate = new Date();
-    filterFocalDropdown();
-
-    document.getElementById('koboHomeMenu').classList.add('d-none');
-    document.getElementById('koboQueueViewer').classList.add('d-none');
-    document.getElementById('koboFormEditor').classList.remove('d-none');
-  }
-
-  function editLocalRecord(localId) {
-    const rec = getLocalRecords().find(r => r.localId === localId);
-    if (!rec) return;
-    const p = rec.payload;
-    document.getElementById('editLocalId').value = rec.localId;
-    document.getElementById('formEditorTitle').innerText = `Edit Saved Form (${rec.status})`;
-
-    document.getElementById('f_repName').value = p.reportingByName || '';
-    document.getElementById('f_repRole').value = p.reportingByRole || '';
-    document.getElementById('f_channel').value = p.channelUsed || '';
-    document.getElementById('f_dateRep').value = p.dateReported || '';
-    document.getElementById('f_dateInc').value = p.dateOfIncident || '';
-    document.getElementById('f_project').value = p.projectName || '';
-    document.getElementById('f_sector').value = p.sector || '';
-    document.getElementById('f_district').value = p.district || '';
-    document.getElementById('f_upazila').value = p.upazila || '';
-    document.getElementById('f_camp').value = p.camp || '';
-    document.getElementById('f_block').value = p.block || '';
-    document.getElementById('f_complainant').value = p.reporterName || '';
-    document.getElementById('f_fcn').value = p.fcnNumber || '';
-    document.getElementById('f_gender').value = p.gender || '';
-    document.getElementById('f_age').value = p.ageGroup || '';
-    document.getElementById('f_implicated').value = p.implicatedParties || '';
-    document.getElementById('f_focalSearch').value = '';
-    filterFocalDropdown();
-    document.getElementById('f_focal').value = p.assignedFocal || '';
-    document.getElementById('f_details').value = p.details || '';
-
-    document.getElementById('koboHomeMenu').classList.add('d-none');
-    document.getElementById('koboQueueViewer').classList.add('d-none');
-    document.getElementById('koboFormEditor').classList.remove('d-none');
-  }
-
   function saveOfflineRecord(targetStatus) {
-    const payload = {
-      reportingByName: document.getElementById('f_repName').value.trim(),
-      reportingByRole: document.getElementById('f_repRole').value.trim(),
-      channelUsed: document.getElementById('f_channel').value,
-      dateReported: document.getElementById('f_dateRep').value,
-      dateOfIncident: document.getElementById('f_dateInc').value,
-      projectName: document.getElementById('f_project').value,
-      sector: document.getElementById('f_sector').value,
-      district: document.getElementById('f_district').value,
-      upazila: document.getElementById('f_upazila').value,
-      camp: document.getElementById('f_camp').value,
-      block: document.getElementById('f_block').value.trim(),
-      reporterName: document.getElementById('f_complainant').value.trim(),
-      fcnNumber: document.getElementById('f_fcn').value.trim(),
-      gender: document.getElementById('f_gender').value,
-      ageGroup: document.getElementById('f_age').value,
-      implicatedParties: document.getElementById('f_implicated').value,
-      assignedFocal: document.getElementById('f_focal').value,
-      details: document.getElementById('f_details').value.trim()
-    };
+    captureCurrentInputValue();
 
-    // Enforce mandatory fields only when Finalizing (Drafts can be saved partially)
     if (targetStatus === 'FINALIZED') {
-      const requiredKeys = [
-        ['reportingByName', 'Reporting by (Name)'],
-        ['reportingByRole', 'Reporting by (Role)'],
-        ['channelUsed', 'Channel Used'],
-        ['dateReported', 'Date Reported'],
-        ['dateOfIncident', 'Date of Incident'],
-        ['projectName', 'Project Name'],
-        ['sector', 'Sector'],
-        ['district', 'District'],
-        ['upazila', 'Upazila'],
-        ['camp', 'Camp'],
-        ['block', 'Block / Sub-Block'],
-        ['reporterName', 'Complainant Name'],
-        ['gender', 'Gender'],
-        ['ageGroup', 'Age Group'],
-        ['implicatedParties', 'Implicated Parties'],
-        ['assignedFocal', 'Assigned Verifier'],
-        ['details', 'Incident Details']
-      ];
-      const missing = requiredKeys.filter(([k]) => !payload[k]).map(([, lbl]) => lbl);
+      const missing = getMissingRequiredQuestions();
       if (missing.length > 0) {
-        alert('Please fill all mandatory fields before finalizing:\n• ' + missing.join('\n• '));
+        alert('Cannot finalize yet. Please complete:\n• ' + missing.map(m => m.label).join('\n• '));
         return;
       }
     }
@@ -491,7 +675,7 @@
       if (idx >= 0) {
         all[idx].status = targetStatus;
         all[idx].updatedAt = nowStr;
-        all[idx].payload = payload;
+        all[idx].payload = Object.assign({}, CURRENT_ANSWERS);
       }
     } else {
       all.unshift({
@@ -500,7 +684,7 @@
         updatedAt: nowStr,
         trackingId: '',
         assignedSummary: null,
-        payload: payload
+        payload: Object.assign({}, CURRENT_ANSWERS)
       });
     }
 
@@ -511,16 +695,16 @@
       syncFinalizedQueue(false);
     } else {
       alert(targetStatus === 'DRAFT'
-        ? 'Saved as Draft on device.'
-        : 'Report Finalized! Ready to send when online.');
+        ? 'Form saved as Draft on device.'
+        : 'Form Finalized! Ready to send when online.');
     }
   }
 
   function openQueueList(statusType) {
     const titles = {
-      DRAFT: 'Edit Saved Drafts',
-      FINALIZED: 'Send Finalized Reports (Outbox)',
-      SENT: 'Sent Reports (Synced)'
+      DRAFT: 'Edit Saved Forms (Drafts)',
+      FINALIZED: 'Send Finalized Forms (Outbox)',
+      SENT: 'View Sent Forms'
     };
     document.getElementById('queueViewerTitle').innerText = titles[statusType];
     document.getElementById('btnQueueSendSelected').classList.toggle('d-none', statusType !== 'FINALIZED');
@@ -567,7 +751,6 @@
     openQueueList(currentStatus);
   }
 
-  /* ================= AUTO / MANUAL SYNC ENGINE ================= */
   let isSyncing = false;
 
   async function syncFinalizedQueue(isAuto) {
