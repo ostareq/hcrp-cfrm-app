@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#2b3a67">
-  <title>HCRP CFRM Field App</title>
-  <link rel="manifest" href="./manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="HCRP CFRM">
+  <title>HCRP CFRM Field App</title>
+  <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icon-512.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
@@ -158,7 +158,7 @@
       <!-- Top Wizard Bar -->
       <div class="d-flex justify-content-between align-items-center mb-2">
         <button class="btn btn-sm btn-outline-secondary" onclick="confirmExitWizard()"><i class="bi bi-x-lg"></i> Exit</button>
-        <span class="fw-bold text-primary small" id="wizardStepIndicator">Question 1 of 18</span>
+        <span class="fw-bold text-primary small" id="wizardStepIndicator">Prompt 1 of 19</span>
         <button class="btn btn-sm btn-outline-primary" onclick="openJumpModal()"><i class="bi bi-list-ul me-1"></i>Jump</button>
       </div>
 
@@ -238,7 +238,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   // PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT /exec URL HERE:
-  const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzeHmfK5IfbhETSHQ7DqaFZm8DeAK0QwasJ6FOPW0J1kjgwadhfIU8u63Gj6jAxhvFd/exec';
+  const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
 
   const STORAGE_KEYS = {
     META: 'HCRP_CFRM_OFFLINE_META_V1',
@@ -271,7 +271,7 @@
     { key: 'implicatedParties', label: '16. Implicated Parties', type: 'select', dropdownKey: 'Implicated Parties', required: true, hint: 'Tap to select Implicated Parties.' },
     { key: 'assignedFocal', label: '17. Assigned Person / Focal (Verifier)', type: 'focal_select', required: true, hint: 'Search and tap the Verifier who will verify this report.' },
     { key: 'details', label: '18. Feedback / Complaint / Incident Details', type: 'textarea', required: true, hint: 'Describe the incident or feedback clearly.' },
-    { key: '__FINAL_SCREEN__', label: 'End of Form — Save or Finalize', type: 'summary', required: false, hint: 'Review completion status and choose Save Draft or Finalize.' }
+    { key: '__FINAL_SCREEN__', label: 'End of Form — Full Review & Finalize', type: 'summary', required: false, hint: 'Check all answers below before finalizing or saving as draft.' }
   ];
 
   if ('serviceWorker' in navigator) {
@@ -313,10 +313,9 @@
     stage.addEventListener('touchend', e => {
       const dx = e.changedTouches[0].screenX - touchStartX;
       const dy = e.changedTouches[0].screenY - touchStartY;
-      // Trigger horizontal swipe only if horizontal movement > 65px and greater than vertical scroll
       if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-        if (dx < 0) nextQuestion();      // Swipe Left -> Next Question
-        else prevQuestion();             // Swipe Right -> Previous Question
+        if (dx < 0) nextQuestion();
+        else prevQuestion();
       }
     }, { passive: true });
   }
@@ -522,18 +521,39 @@
     }
     else if (q.type === 'summary') {
       const missing = getMissingRequiredQuestions();
+      const reviewRows = KOBO_QUESTIONS
+        .filter(item => item.type !== 'summary')
+        .map((item, idx) => {
+          const rawVal = String(CURRENT_ANSWERS[item.key] || '').trim();
+          const isMissing = item.required && !rawVal;
+          return `
+            <div class="d-flex justify-content-between align-items-start py-2 border-bottom ${isMissing ? 'bg-danger bg-opacity-10 px-2 rounded' : ''}"
+                 style="cursor:pointer;" onclick="CURRENT_STEP=${idx}; renderCurrentQuestion();">
+              <div class="pe-2">
+                <div class="small text-muted fw-semibold">${item.label}</div>
+                <div class="${isMissing ? 'text-danger fw-bold' : 'text-dark fw-semibold'}">
+                  ${rawVal ? escapeHtml(rawVal) : (item.required ? 'Missing (Tap to fill)' : 'Not provided')}
+                </div>
+              </div>
+              <span class="badge bg-light text-primary border mt-1"><i class="bi bi-pencil"></i> Edit</span>
+            </div>`;
+        }).join('');
+
       bodyHtml += `
-        <div class="p-3 rounded border bg-light mb-3">
-          <div class="fw-bold mb-1">Form Completion Check:</div>
+        <div class="p-2 px-3 rounded border mb-3 ${missing.length === 0 ? 'bg-success bg-opacity-10 border-success' : 'bg-danger bg-opacity-10 border-danger'}">
           ${missing.length === 0
-            ? `<div class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>All 17 mandatory questions are answered! Ready to Finalize.</div>`
-            : `<div class="text-danger small fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>${missing.length} mandatory question(s) still blank:</div>
-               <div class="small text-muted">${missing.map(m => m.label).join('<br>')}</div>`
+            ? `<div class="text-success fw-bold small"><i class="bi bi-check-circle-fill me-1"></i>All 17 mandatory questions completed. Review your entries below before finalizing:</div>`
+            : `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-triangle-fill me-1"></i>${missing.length} mandatory field(s) missing — tap any highlighted row below to complete it:</div>`
           }
         </div>
+
+        <div class="border rounded bg-white px-3 py-1 mb-3" style="max-height: 330px; overflow-y: auto;">
+          ${reviewRows}
+        </div>
+
         <div class="d-grid gap-2">
-          <button type="button" class="btn btn-success btn-lg fw-bold" onclick="saveOfflineRecord('FINALIZED')">
-            <i class="bi bi-check2-circle me-2"></i>Finalize & Queue for Sending
+          <button type="button" class="btn btn-success btn-lg fw-bold" ${missing.length > 0 ? 'disabled' : ''} onclick="saveOfflineRecord('FINALIZED')">
+            <i class="bi bi-check2-circle me-2"></i>Confirm & Finalize Report
           </button>
           <button type="button" class="btn btn-warning fw-bold" onclick="saveOfflineRecord('DRAFT')">
             <i class="bi bi-save me-2"></i>Save as Draft (Edit Later)
@@ -548,7 +568,6 @@
   function selectKoboOption(key, value) {
     CURRENT_ANSWERS[key] = value;
     renderCurrentQuestion();
-    // Auto-advance smoothly after a short tap confirmation (KoboCollect feel)
     setTimeout(() => {
       if (CURRENT_STEP < KOBO_QUESTIONS.length - 1) {
         CURRENT_STEP++;
