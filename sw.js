@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hcrp-cfrm-offline-v4';
+const CACHE_NAME = 'hcrp-cfrm-offline-v5';
 const ASSETS = [
   './',
   './index.html',
